@@ -24,7 +24,8 @@ else
 endif
 
 # Pass PLATFORM to compiler as a define
-CXXFLAGS += -DPLATFORM=$(PLATFORM)
+C_DEFS += -DPLATFORM=$(PLATFORM)
+C_DEFS += -DPLATFORM_$(PLATFORM)=1
 
 # Add PlateauNEVersio sources
 CPP_SOURCES += PlateauNEVersio/utilities/Utilities.cpp

@@ -20,11 +20,24 @@
 #include "daisysp.h"
 #include "flick_oscillator.h"
 #include "flick_filters.hpp"
+#if defined(PLATFORM_hothouse)
+#include "hothouse.h"
+namespace flick {
+// Alias Hothouse hardware to Funbox so the rest of the code can reuse
+// the same names and control logic across platforms.
+using Funbox = clevelandmusicco::Hothouse;
+}
+#else
 #include "funbox_gpl.h"
+#endif
 #include "hall_reverb.h"
 #include "spring_reverb.h"
 #include "Dattorro.hpp"
 #include <math.h>
+
+#if !defined(PLATFORM_funbox) && !defined(PLATFORM_hothouse)
+#error "PLATFORM must be set to funbox or hothouse"
+#endif
 
 using flick::FlickOscillator;
 using flick::Funbox;
@@ -59,8 +72,8 @@ constexpr float DELAY_WET_MIX_ATTENUATION = 0.333f; // Attenuation for wet delay
 constexpr float DELAY_DRY_WET_PERCENT_MAX = 100.0f; // Max value for dry/wet percentage
 
 // Filter Frequency constants
-constexpr float NOTCH_1_FREQ = 6020.0f; // FunBox is giving a weird resonance here
-constexpr float NOTCH_2_FREQ = 12278.0f; // FunBox is giving a weird resonance here
+constexpr float NOTCH_1_FREQ = 6020.0f; // Daisy Seed resonance notch
+constexpr float NOTCH_2_FREQ = 12278.0f; // Daisy Seed resonance notch
 
 // Harmonic tremolo state (filter cutoffs taken from Fender 6G12-A schematic)
 constexpr float HARMONIC_TREMOLO_LPF_CUTOFF = 144.0f; // 220K and 5nF LPF
@@ -194,22 +207,23 @@ enum TremoloMode {
 };
 
 
+// Toggle switch mappings (orientation: Hothouse vertical UP/DOWN, Funbox horizontal LEFT/RIGHT)
 constexpr ReverbKnobMode kReverbKnobMap[] = {
-  REVERB_KNOB_ALL_WET,                        // RIGHT
+  REVERB_KNOB_ALL_WET,                        // UP (Hothouse) / RIGHT (Funbox)
   REVERB_KNOB_DRY_WET_MIX,                    // MIDDLE
-  REVERB_KNOB_ALL_DRY,                        // LEFT
+  REVERB_KNOB_ALL_DRY,                        // DOWN (Hothouse) / LEFT (Funbox)
 };
 
 constexpr TremDelMakeUpGain kMakeupGainMap[] = {
-  MAKEUP_GAIN_HEAVY,                       // RIGHT
+  MAKEUP_GAIN_HEAVY,                       // UP (Hothouse) / RIGHT (Funbox)
   MAKEUP_GAIN_NORMAL,                      // MIDDLE
-  MAKEUP_GAIN_NONE,                        // LEFT
+  MAKEUP_GAIN_NONE,                        // DOWN (Hothouse) / LEFT (Funbox)
 };
 
 constexpr TremoloMode kTremoloModeMap[] = {
-    TREMOLO_SQUARE,     // RIGHT
+    TREMOLO_SQUARE,     // UP (Hothouse) / RIGHT (Funbox)
     TREMOLO_HARMONIC,   // MIDDLE
-    TREMOLO_SINE,       // LEFT
+    TREMOLO_SINE,       // DOWN (Hothouse) / LEFT (Funbox)
 };
 
 Delay delayL;
@@ -244,7 +258,7 @@ PeakingEQ harmonic_trem_eq_peak2_R;
 LowShelf harmonic_trem_eq_low_shelf_L;
 LowShelf harmonic_trem_eq_low_shelf_R;
 
-// General Notch Filters to remove FunBox resonant frequencies
+// General Notch Filters to remove Daisy Seed resonant frequencies
 PeakingEQ notch1_L;
 PeakingEQ notch1_R;
 PeakingEQ notch2_L;
@@ -452,7 +466,7 @@ void handleNormalPress(Funbox::Switches footswitch) {
     pedal_mode = PEDAL_MODE_NORMAL;
   } else if (pedal_mode == PEDAL_MODE_EDIT_MONO_STEREO) {
     // Only save the settings if the RIGHT footswitch is pressed in mono-stereo
-    // edit mode. The CANCEL footswitch is used to exit mono-stereo edit mode
+    // edit mode. The LEFT footswitch is used to exit mono-stereo edit mode
     // without saving.
     if (footswitch == Funbox::FOOTSWITCH_2) {
       // Save the mono-stereo settings
@@ -503,6 +517,7 @@ void handleDoublePress(Funbox::Switches footswitch) {
 void handleLongPress(Funbox::Switches footswitch) {
   if (footswitch == Funbox::FOOTSWITCH_2) {
     // If the right footswitch is long-pressed, enter mono-stereo config.
+    // Available on both platforms.
 
     // Turn on reverb and turn off the other effects
     bypass_verb = false;
@@ -530,6 +545,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   hw.ProcessAllControls();
 
   // Read DIP switches to determine reverb type (runtime update)
+#if defined(PLATFORM_funbox)
   {
     bool dip1 = hw.switches[Funbox::DIP_SWITCH_1].RawState();
     bool dip2 = hw.switches[Funbox::DIP_SWITCH_2].RawState();
@@ -543,6 +559,9 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
       current_reverb_type = REVERB_PLATE; // Default for both on
     }
   }
+#else
+  current_reverb_type = REVERB_PLATE;
+#endif
 
   if (pedal_mode == PEDAL_MODE_EDIT_REVERB) {
     // Edit mode
