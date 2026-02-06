@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Daisy Hothouse",
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/libDaisy/src/**",
+                "${workspaceFolder}/libDaisy/core/**",
+                "${workspaceFolder}/libDaisy/Drivers/CMSIS/Include",
+                "${workspaceFolder}/libDaisy/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
+                "${workspaceFolder}/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc",
+                "${workspaceFolder}/DaisySP/Source/**"
+            ],
+            "defines": [
+                "PLATFORM_hothouse",
+                "STM32H750xx",
+                "USE_HAL_DRIVER",
+                "CORE_CM7",
+                "__STATIC_INLINE=static inline",
+                 "__weak=__attribute__((weak))"
+            ],
+            "compilerPath": "/usr/local/bin/arm-none-eabi-g++",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}
