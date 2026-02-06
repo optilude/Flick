@@ -1364,7 +1364,7 @@ int main() {
 
   p_verb_amt.Init(hw.knobs[Funbox::KNOB_1], 0.0f, 1.0f, Parameter::LINEAR);
 
-  p_trem_speed.Init(hw.knobs[Funbox::KNOB_2], TREMOLO_SPEED_MIN, TREMOLO_SPEED_MAX, Parameter::LINEAR);
+  p_trem_speed.Init(hw.knobs[Funbox::KNOB_2], TREMOLO_SPEED_MIN, TREMOLO_SPEED_MAX, Parameter::LOGARITHMIC);
   p_trem_depth.Init(hw.knobs[Funbox::KNOB_3], 0.0f, TREMOLO_DEPTH_SCALE, Parameter::LINEAR);
 
   p_delay_time.Init(hw.knobs[Funbox::KNOB_4], hw.AudioSampleRate() * DELAY_TIME_MIN_SECONDS, MAX_DELAY, Parameter::LOGARITHMIC);
