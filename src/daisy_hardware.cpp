@@ -274,6 +274,7 @@ void DaisyHardware::ProcessFootswitchPresses(Switches footswitch) {
     return; // Nothing to do if callbacks have not been registered
   }
   bool is_pressed = switches[footswitch].RisingEdge();
+  bool currently_pressed = switches[footswitch].Pressed();
   int footswitch_index = footswitch == DaisyHardware::FOOTSWITCH_1 ? 0 : 1;
 
   uint32_t now = System::GetNow();
@@ -294,7 +295,7 @@ void DaisyHardware::ProcessFootswitchPresses(Switches footswitch) {
 
   uint32_t press_duration = now - footswitch_start_time[footswitch_index];
 
-  if (switches[footswitch].Pressed() && press_duration >= HOLD_THRESHOLD_MS && !footswitch_long_press_triggered[footswitch_index]) {
+  if (currently_pressed && press_duration >= HOLD_THRESHOLD_MS && !footswitch_long_press_triggered[footswitch_index]) {
     // Footswitch is being held down
     if (footswitchCallbacks->HandleLongPress != NULL) {
       footswitchCallbacks->HandleLongPress(footswitch);
@@ -316,5 +317,5 @@ void DaisyHardware::ProcessFootswitchPresses(Switches footswitch) {
     }
   }
 
-  footswitch_last_state[footswitch_index] = is_pressed;
+  footswitch_last_state[footswitch_index] = currently_pressed;
 }
