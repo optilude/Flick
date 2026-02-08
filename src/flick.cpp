@@ -358,6 +358,12 @@ bool tap_tempo_controls_delay = false;  // True when tap tempo overrides knob
 float tap_tempo_tremolo_freq_hz = 0.0f;
 bool tap_tempo_controls_tremolo = false;  // True when tap tempo overrides tremolo knob
 
+// Tap tempo averaging
+constexpr int TAP_TEMPO_AVG_COUNT = 4;
+uint32_t tap_tempo_intervals[TAP_TEMPO_AVG_COUNT];
+int tap_tempo_idx = 0;
+int tap_tempo_cnt = 0;
+
 // Tap tempo knob takeover for KNOB_4 (delay time) and KNOB_2 (tremolo speed)
 KnobTakeover tap_tempo_delay_knob_takeover;    // KNOB_4: Delay time
 KnobTakeover tap_tempo_tremolo_knob_takeover;  // KNOB_2: Tremolo speed
@@ -756,6 +762,10 @@ void enterTapTempoMode() {
   tap_tempo_active = true;
   tap_tempo_last_tap_time = System::GetNow();
   // Don't clear existing tap tempo data - allow refinement
+  
+  // Reset tap tempo averaging to start fresh for this session
+  tap_tempo_cnt = 0;
+  tap_tempo_idx = 0;
 
   // Set tap tempo control flags based on which effects are currently active
   bool delay_active = !bypass_delay;
@@ -805,18 +815,37 @@ void handleTapTempoTap() {
     if (interval >= TAP_TEMPO_MIN_INTERVAL_MS &&
         interval <= TAP_TEMPO_MAX_INTERVAL_MS) {
 
-      tap_tempo_interval_ms = interval;
+      // Check for drastic tempo change (>30%) to reset averaging
+      if (tap_tempo_interval_ms > 0) {
+        float diff = fabsf((float)interval - (float)tap_tempo_interval_ms);
+        if (diff > (float)tap_tempo_interval_ms * 0.3f) {
+           tap_tempo_cnt = 0;
+           tap_tempo_idx = 0;
+        }
+      }
 
-      // Convert to delay samples at 48kHz
-      tap_tempo_delay_samples = (interval / MS_PER_SECOND) * SAMPLE_RATE;
+      // Add to history
+      tap_tempo_intervals[tap_tempo_idx] = interval;
+      tap_tempo_idx = (tap_tempo_idx + 1) % TAP_TEMPO_AVG_COUNT;
+      if (tap_tempo_cnt < TAP_TEMPO_AVG_COUNT) tap_tempo_cnt++;
+
+      // Calculate average
+      uint32_t sum = 0;
+      for (int i = 0; i < tap_tempo_cnt; i++) {
+        sum += tap_tempo_intervals[i];
+      }
+      tap_tempo_interval_ms = sum / tap_tempo_cnt;
+
+      // Convert to delay samples at 48kHz using averaged interval
+      tap_tempo_delay_samples = (tap_tempo_interval_ms / MS_PER_SECOND) * SAMPLE_RATE;
 
       // Clamp to valid delay range
       tap_tempo_delay_samples = daisysp::fclamp(tap_tempo_delay_samples,
                                                  TAP_TEMPO_SAMPLES_MIN,
                                                  TAP_TEMPO_SAMPLES_MAX);
 
-      // Convert to tremolo frequency (Hz)
-      tap_tempo_tremolo_freq_hz = MS_PER_SECOND / interval;
+      // Convert to tremolo frequency (Hz) using averaged interval
+      tap_tempo_tremolo_freq_hz = MS_PER_SECOND / tap_tempo_interval_ms;
 
       // Clamp to tremolo speed range
       tap_tempo_tremolo_freq_hz = daisysp::fclamp(tap_tempo_tremolo_freq_hz, TREMOLO_SPEED_MIN, TREMOLO_SPEED_MAX);
@@ -968,7 +997,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
 
     // LED_2: Blink at current tempo (if tempo set)
     if (tap_tempo_interval_ms > 0) {
-      uint32_t blink_phase = System::GetNow() % tap_tempo_interval_ms;
+      uint32_t elapsed = System::GetNow() - tap_tempo_last_tap_time;
+      uint32_t blink_phase = elapsed % tap_tempo_interval_ms;
       float blink_threshold = tap_tempo_interval_ms * TAP_TEMPO_BLINK_DUTY_CYCLE;
 
       if (blink_phase < blink_threshold) {
