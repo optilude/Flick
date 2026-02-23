@@ -169,15 +169,15 @@ constexpr float tank_mod_speed_values[] = {0.5f, 0.25f, 0.1f};
 constexpr float tank_mod_depth_values[] = {0.5f, 0.25f, 0.1f};
 constexpr float tank_mod_shape_values[] = {0.5f, 0.25f, 0.1f};
 
-// Reverb edit mode parameter captures (with multipliers)
-KnobCapture pre_delay_capture(p_knob_2, 0.25f);      // p_knob_2.Process() * 0.25
-KnobCapture decay_capture(p_knob_3, 1.0f);           // p_knob_3.Process()
-KnobCapture diffusion_capture(p_knob_4, 1.0f);       // p_knob_4.Process()
-KnobCapture input_cutoff_capture(p_knob_5, 10.0f);  // p_knob_5.Process() * 10.0
-KnobCapture tank_cutoff_capture(p_knob_6, 10.0f);   // p_knob_6.Process() * 10.0
-SwitchCapture mod_speed_capture(hw, Funbox::TOGGLESWITCH_1, tank_mod_speed_values);
-SwitchCapture mod_depth_capture(hw, Funbox::TOGGLESWITCH_2, tank_mod_depth_values);
-SwitchCapture mod_shape_capture(hw, Funbox::TOGGLESWITCH_3, tank_mod_shape_values);
+// Reverb edit mode parameter captures
+KnobCapture pre_delay_capture(p_knob_2);
+KnobCapture decay_capture(p_knob_3);
+KnobCapture diffusion_capture(p_knob_4);
+KnobCapture input_cutoff_capture(p_knob_5);
+KnobCapture tank_cutoff_capture(p_knob_6);
+SwitchCapture mod_speed_capture(hw, Funbox::TOGGLESWITCH_1);
+SwitchCapture mod_depth_capture(hw, Funbox::TOGGLESWITCH_2);
+SwitchCapture mod_shape_capture(hw, Funbox::TOGGLESWITCH_3);
 
 struct Delay {
   DelayLine<float, MAX_DELAY> *del;
@@ -687,15 +687,15 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     // Edit mode with parameter capture
     plate_dry = 1.0; // Always use dry 100% in edit mode
 
-    // Use capture objects - they return parameter values (frozen until controls move past threshold)
-    plate_pre_delay = pre_delay_capture.Process();
-    plate_decay = decay_capture.Process();
-    plate_tank_diffusion = diffusion_capture.Process();
-    plate_input_damp_high = input_cutoff_capture.Process();
-    plate_tank_damp_high = tank_cutoff_capture.Process();
-    plate_tank_mod_speed = mod_speed_capture.Process();
-    plate_tank_mod_depth = mod_depth_capture.Process();
-    plate_tank_mod_shape = mod_shape_capture.Process();
+    // Use capture objects - pass calculated values, they return frozen or current based on movement
+    plate_pre_delay = pre_delay_capture.Process(p_knob_2.Process() * 0.25f);
+    plate_decay = decay_capture.Process(p_knob_3.Process());
+    plate_tank_diffusion = diffusion_capture.Process(p_knob_4.Process());
+    plate_input_damp_high = input_cutoff_capture.Process(p_knob_5.Process() * 10.0f);
+    plate_tank_damp_high = tank_cutoff_capture.Process(p_knob_6.Process() * 10.0f);
+    plate_tank_mod_speed = mod_speed_capture.Process(tank_mod_speed_values[hw.GetToggleswitchPosition(Funbox::TOGGLESWITCH_1)]);
+    plate_tank_mod_depth = mod_depth_capture.Process(tank_mod_depth_values[hw.GetToggleswitchPosition(Funbox::TOGGLESWITCH_2)]);
+    plate_tank_mod_shape = mod_shape_capture.Process(tank_mod_shape_values[hw.GetToggleswitchPosition(Funbox::TOGGLESWITCH_3)]);
 
     verb.setDecay(plate_decay);
     verb.setTankDiffusion(plate_tank_diffusion);
