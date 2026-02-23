@@ -529,14 +529,14 @@ void handleDoublePress(Funbox::Switches footswitch) {
   if (footswitch == Funbox::FOOTSWITCH_1) {
     // Go into reverb edit mode
     // Capture all current parameter values
-    p_knob_2_capture.Capture();
-    p_knob_3_capture.Capture();
-    p_knob_4_capture.Capture();
-    p_knob_5_capture.Capture();
-    p_knob_6_capture.Capture();
-    p_sw1_capture.Capture();
-    p_sw2_capture.Capture();
-    p_sw3_capture.Capture();
+    p_knob_2_capture.Capture(plate_pre_delay);
+    p_knob_3_capture.Capture(plate_decay);
+    p_knob_4_capture.Capture(plate_tank_diffusion);
+    p_knob_5_capture.Capture(plate_input_damp_high);
+    p_knob_6_capture.Capture(plate_tank_damp_high);
+    p_sw1_capture.Capture(plate_tank_mod_speed);
+    p_sw2_capture.Capture(plate_tank_mod_depth);
+    p_sw3_capture.Capture(plate_tank_mod_shape);
 
     bypass_verb = false; // Make sure that reverb is ON
     pedal_mode = PEDAL_MODE_EDIT_REVERB;
@@ -692,14 +692,14 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     plate_dry = 1.0; // Always use dry 100% in edit mode
 
     // Use capture objects - pass calculated values, they return frozen or current based on movement
-    plate_pre_delay = p_knob_2_capture.Process() * 0.25f;
-    plate_decay = p_knob_3_capture.Process();
-    plate_tank_diffusion = p_knob_4_capture.Process();
-    plate_input_damp_high = p_knob_5_capture.Process() * 10.0f;
-    plate_tank_damp_high = p_knob_6_capture.Process() * 10.0f;
-    plate_tank_mod_speed = tank_mod_speed_values[p_sw1_capture.Process()];
-    plate_tank_mod_depth = tank_mod_depth_values[p_sw2_capture.Process()];
-    plate_tank_mod_shape = tank_mod_shape_values[p_sw3_capture.Process()];
+    plate_pre_delay = p_knob_2_capture.IsFrozen()? p_knob_2_capture.GetFrozenValue(): p_knob_2_capture.Process() * 0.25f;
+    plate_decay = p_knob_3_capture.IsFrozen()? p_knob_3_capture.GetFrozenValue(): p_knob_3_capture.Process();
+    plate_tank_diffusion = p_knob_4_capture.IsFrozen()? p_knob_4_capture.GetFrozenValue(): p_knob_4_capture.Process();
+    plate_input_damp_high = p_knob_5_capture.IsFrozen()? p_knob_5_capture.GetFrozenValue(): p_knob_5_capture.Process() * 10.0f;
+    plate_tank_damp_high = p_knob_6_capture.IsFrozen()? p_knob_6_capture.GetFrozenValue(): p_knob_6_capture.Process() * 10.0f;
+    plate_tank_mod_speed = p_sw1_capture.IsFrozen()? p_sw1_capture.GetFrozenValue(): tank_mod_speed_values[p_sw1_capture.Process()];
+    plate_tank_mod_depth = p_sw2_capture.IsFrozen()? p_sw2_capture.GetFrozenValue(): tank_mod_depth_values[p_sw2_capture.Process()];
+    plate_tank_mod_shape = p_sw3_capture.IsFrozen()? p_sw3_capture.GetFrozenValue(): tank_mod_shape_values[p_sw3_capture.Process()];
 
     verb.setDecay(plate_decay);
     verb.setTankDiffusion(plate_tank_diffusion);

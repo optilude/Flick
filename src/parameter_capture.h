@@ -47,7 +47,7 @@ public:
    * @param threshold Movement threshold (0.0-1.0) required to activate, default 0.05
    */
   explicit KnobCapture(daisy::Parameter& knob, float threshold = 0.05f)
-      : knob_(knob), frozen_value_(0.0f), is_frozen_(false), threshold_(threshold) {}
+      : knob_(knob), frozen_knob_(0.0f), frozen_value_(0.0f), is_frozen_(false), threshold_(threshold) {}
 
   /**
    * @brief Freezes the current parameter value and records knob position.
@@ -57,10 +57,16 @@ public:
    * to Process() will return the frozen value until the knob moves beyond
    * the threshold.
    */
-  void Capture() {
-    frozen_value_ = knob_.Process();
+  void Capture(float value) {
+    frozen_knob_ = knob_.Process();
+    frozen_value_ = value;
     is_frozen_ = true;
   }
+
+  /**
+   * @brief Returns the frozen parameter value.
+   */
+  float GetFrozenValue() const { return frozen_value_; }
 
   /**
    * @brief Returns the appropriate knob value based on capture state.
@@ -83,14 +89,14 @@ public:
     }
 
     // Capture mode - check for movement
-    if (std::fabs(current_value - frozen_value_) >= threshold_) {
+    if (std::fabs(current_value - frozen_knob_) >= threshold_) {
       // Threshold exceeded, activate and return current value
       is_frozen_ = false;
       return current_value;
     }
 
     // Still frozen, return the frozen parameter value
-    return frozen_value_;
+    return frozen_knob_;
   }
 
   /**
@@ -110,7 +116,8 @@ public:
 
 private:
   daisy::Parameter& knob_;    ///< Reference to the knob's Parameter object
-  float frozen_value_;        ///< Frozen parameter value
+  float frozen_knob_;         ///< Frozen knob parameter value
+  float frozen_value_;        ///< Cached value
   bool is_frozen_;            ///< true = frozen, false = pass-through
   float threshold_;           ///< Movement threshold for activation
 };
@@ -136,13 +143,19 @@ public:
    * @param switch_idx The toggle switch identifier (TOGGLESWITCH_1/2/3)
    */
   SwitchCapture(Funbox& hw, Funbox::Toggleswitch switch_idx)
-      : hw_(hw), switch_idx_(switch_idx), frozen_value_(0), is_frozen_(false) {}
+      : hw_(hw), switch_idx_(switch_idx), frozen_switch_(0), frozen_value_(0.0f), is_frozen_(false) {}
+
+  /**
+   * @brief Returns the frozen parameter value.
+   */
+  float GetFrozenValue() const { return frozen_value_; }
 
   /**
    * @brief Freezes the current parameter value and records switch position.
    */
-  void Capture() {
-    frozen_value_ = hw_.GetToggleswitchPosition(switch_idx_);
+  void Capture(float value) {
+    frozen_switch_ = hw_.GetToggleswitchPosition(switch_idx_);
+    frozen_value_ = value;
     is_frozen_ = true;
   }
 
@@ -158,20 +171,19 @@ public:
   int Process() {
     int current_value = hw_.GetToggleswitchPosition(switch_idx_);
 
-
     if (!is_frozen_) {
       return current_value;
     }
 
     // Capture mode - check for movement
-    if (current_value != frozen_value_) {
+    if (current_value != frozen_switch_) {
       // Switch moved, activate and return new value
       is_frozen_ = false;
       return current_value;
     }
 
     // Still frozen
-    return frozen_value_;
+    return frozen_switch_;
   }
 
   /**
@@ -190,8 +202,9 @@ public:
 private:
   Funbox& hw_;                      ///< Reference to hardware object
   Funbox::Toggleswitch switch_idx_; ///< Which toggle switch
-  int frozen_value_;              ///< Frozen parameter value
+  int frozen_switch_;               ///< Frozen parameter value
   bool is_frozen_;                  ///< true = frozen, false = pass-through
+  float frozen_value_;              ///< Cached value (if needed for lookup)
 };
 
 } // namespace flick
